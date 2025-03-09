@@ -203,19 +203,20 @@
         .analysis-grid {
             display: flex;
             flex-direction: row;
-            justify-content: space-between;
-            gap: 15px;
+            justify-content: center;
+            gap: 10px;
             margin-bottom: 20px;
-            width: 100%;
         }
         
         .analysis-item {
-            flex: 1;
+            flex: 0 1 auto;
             background-color: #444;
-            padding: 12px;
+            padding: 8px 16px;
             border-radius: 5px;
             text-align: center;
             min-width: 0;
+            display: inline-flex;
+            align-items: center;
         }
         
         .analysis-label {
@@ -312,11 +313,6 @@
                 font-size: 20rem;
             }
             
-            .analysis-grid {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
             .analysis-value {
                 font-size: 1rem;
             }
@@ -350,12 +346,6 @@
                     <label class="input-label" for="targetTime">Target Time (s)</label>
                     <input type="number" class="input-field half-width" id="targetTime" value="20" min="0" step="0.1">
                 </div>
-                <div class="input-group">
-                    <label class="input-label" for="targetDelta">Buffer from Target (+-) (s)</label>
-                    <input type="number" class="input-field half-width" id="targetDelta" value="0" min="0" step="0.1">
-                </div>
-            </div>
-            <div class="settings-row">
                 <div class="input-group">
                     <label class="input-label">Fullscreen Display</label>
                     <div class="toggle-container">
@@ -442,7 +432,6 @@
             const lapLarge = document.getElementById('lapLarge');
             const btnBack = document.getElementById('btnBack');
             const targetTimeInput = document.getElementById('targetTime');
-            const targetDeltaInput = document.getElementById('targetDelta');
             const copyHistoryBtn = document.getElementById('copyHistory');
             
             // Performance analysis elements
@@ -558,6 +547,9 @@
                     
                     // Start the interval to update the display
                     timerInterval = setInterval(updateDisplay, 100);
+                    
+                    // Change button text
+                    btnStartLap.textContent = "Lap";
                 } else {
                     // Record lap
                     const lapTime = currentTime - lapStartTime;
@@ -590,6 +582,9 @@
                     // Record the lap in history
                     addLapToHistory(lastLapTime);
                     
+                    // Reset button text
+                    btnStartLap.textContent = "Start/Lap";
+                    
                     btnStop.disabled = true;
                 }
             }
@@ -619,6 +614,9 @@
                 bestLapEl.textContent = '--';
                 avgLapEl.textContent = '--';
                 targetDiffEl.textContent = '--';
+                
+                // Reset button text
+                btnStartLap.textContent = "Start/Lap";
                 
                 // Reset chart
                 if (window.lapChart && typeof window.lapChart.destroy === 'function') {
@@ -748,19 +746,16 @@
             // Show fullscreen lap display
             function showFullscreenLap(lapTime) {
                 const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
-                const delta = parseFloat(targetDeltaInput.value) * 1000; // Convert to ms
+                const targetDelta = 0; // No buffer, just use 0
                 
                 // Determine background color based on time comparison
                 let bgColor;
-                if (lapTime < (targetTime - delta)) {
+                if (lapTime < targetTime) {
                     // Below target (good)
                     bgColor = '#4CAF50'; // Green
-                } else if (lapTime > (targetTime + delta)) {
+                } else {
                     // Above target (bad)
                     bgColor = '#f44336'; // Red
-                } else {
-                    // Within delta of target (neutral)
-                    bgColor = '#2196F3'; // Blue
                 }
                 
                 // Set the background color
@@ -819,7 +814,6 @@
                 
                 const ctx = lapChartEl.getContext('2d');
                 const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
-                const targetDelta = parseFloat(targetDeltaInput.value) * 1000; // Convert to ms
                 
                 // Prepare data for chart
                 const labels = Array.from({length: lapTimes.length}, (_, i) => `Lap ${i+1}`);
@@ -827,12 +821,10 @@
                 
                 // Get background colors based on performance
                 const backgroundColors = lapTimes.map(lapTime => {
-                    if (lapTime < (targetTime - targetDelta)) {
+                    if (lapTime < targetTime) {
                         return 'rgba(76, 175, 80, 0.7)'; // Green
-                    } else if (lapTime > (targetTime + targetDelta)) {
-                        return 'rgba(244, 67, 54, 0.7)'; // Red
                     } else {
-                        return 'rgba(33, 150, 243, 0.7)'; // Blue
+                        return 'rgba(244, 67, 54, 0.7)'; // Red
                     }
                 });
                 
