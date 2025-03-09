@@ -405,15 +405,55 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Timer variables
+            console.log("🚀 Track Cycling Lap Timer Initializing");
+            
+            // Universal toast notification function
+            function showToast(message, isSuccess) {
+                // Remove any existing toast
+                const existingToast = document.getElementById('notification-toast');
+                if (existingToast) {
+                    document.body.removeChild(existingToast);
+                }
+                
+                // Create new toast
+                const toast = document.createElement('div');
+                toast.id = 'notification-toast';
+                toast.style.position = 'fixed';
+                toast.style.bottom = '20px';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
+                toast.style.color = 'white';
+                toast.style.padding = '10px 20px';
+                toast.style.borderRadius = '5px';
+                toast.style.zIndex = '1000';
+                toast.style.textAlign = 'center';
+                toast.style.boxShadow = '0 3px 6px rgba(0,0,0,0.2)';
+                toast.textContent = message;
+                
+                document.body.appendChild(toast);
+                
+                // Auto remove after 1.5 seconds
+                setTimeout(() => {
+                    if (document.body.contains(toast)) {
+                        document.body.removeChild(toast);
+                    }
+                }, 1500);
+            }
+            
+            // Timer variables - explicitly initialized
             let startTime = 0;
             let lapStartTime = 0;
             let totalTime = 0;
             let isRunning = false;
-            let timerInterval;
+            let timerInterval = null;
             let lapNumber = 0;
             let prevLapTime = 0;
             let lastLapTime = 0;
+            
+            // Debounce tracking for double-tap prevention
+            let lastStartLapTime = 0;
+            const startLapDebounceTime = 1000; // 1 second debounce as requested
             
             // Array to store lap times
             let lapTimes = [];
@@ -477,14 +517,21 @@
                 // Convert to seconds
                 const totalSeconds = timeInMs / 1000;
                 
-                // Extract only the ones digit (last digit of seconds part)
-                const onesDigit = Math.floor(totalSeconds) % 10;
-                
-                // Get the first decimal and round it
-                const firstDecimal = Math.round((totalSeconds * 10) % 10);
-                
-                // Ensure we only return exactly one digit for seconds and one for decimal
-                return `${onesDigit}.${firstDecimal}`;
+                // For very short times (less than 10 seconds), show the full seconds value
+                if (totalSeconds < 10) {
+                    // Full seconds with first decimal
+                    return totalSeconds.toFixed(1);
+                } else {
+                    // For longer times, just show the last digit of seconds and first decimal
+                    // Extract only the ones digit (last digit of seconds part)
+                    const onesDigit = Math.floor(totalSeconds) % 10;
+                    
+                    // Get the first decimal and round it
+                    const firstDecimal = Math.round((totalSeconds * 10) % 10);
+                    
+                    // Ensure we only return exactly one digit for seconds and one for decimal
+                    return `${onesDigit}.${firstDecimal}`;
+                }
             }
             
             // Update timer display
@@ -531,12 +578,43 @@
                 }
             }
             
-            // Start/Lap button handler
+            // Start/Lap button handler with debounce protection
             function handleStartLap() {
-                const currentTime = Date.now();
+                console.log("Start/Lap button pressed");
                 
+                // Get the current time IMMEDIATELY to ensure accuracy
+                const currentTime = Date.now();
+                console.log("Current time:", currentTime);
+                
+                // DEBOUNCE CHECK: Prevent accidental double-taps
+                const timeSinceLastPress = currentTime - lastStartLapTime;
+                console.log("Time since last press:", timeSinceLastPress, "ms");
+                
+                if (timeSinceLastPress < startLapDebounceTime) {
+                    console.log("Debounce protection active - ignoring press");
+                    
+                    // Visual feedback - briefly flash the button to indicate it's in cooldown
+                    const originalColor = btnStartLap.style.backgroundColor;
+                    btnStartLap.style.backgroundColor = '#888'; // Gray out the button
+                    
+                    // Show toast notification
+                    showToast(`Please wait ${(startLapDebounceTime - timeSinceLastPress)/1000} sec`, false);
+                    
+                    // Reset the button color after a brief delay
+                    setTimeout(() => {
+                        btnStartLap.style.backgroundColor = originalColor;
+                    }, 200);
+                    
+                    return; // Skip processing this press
+                }
+                
+                // Update the last press time
+                lastStartLapTime = currentTime;
+                
+                // NORMAL FUNCTIONALITY CONTINUES FROM HERE
                 if (!isRunning) {
                     // Start the timer
+                    console.log("Starting timer");
                     isRunning = true;
                     startTime = currentTime;
                     lapStartTime = currentTime;
@@ -552,19 +630,30 @@
                     btnStartLap.textContent = "Lap";
                 } else {
                     // Record lap
+                    console.log("Recording lap");
+                    console.log("Lap start time:", lapStartTime);
                     const lapTime = currentTime - lapStartTime;
-                    addLapToHistory(lapTime);
+                    console.log("Calculated lap time:", lapTime);
                     
-                    // Reset lap timer
+                    // Store lap time FIRST before any display updates
+                    // This guarantees we have the correct value 
+                    const capturedLapTime = lapTime;
+                    
+                    // Update history
+                    addLapToHistory(capturedLapTime);
+                    
+                    // Reset lap timer for next lap
                     lapStartTime = currentTime;
-                    prevLapTime = lapTime;
+                    prevLapTime = capturedLapTime;
                     
-                    // Show fullscreen lap time
-                    showFullscreenLap(lapTime);
+                    // Show fullscreen lap time with the captured value
+                    // Do this AFTER everything else to ensure correct time is used
+                    console.log("Showing fullscreen with lap time:", capturedLapTime);
+                    showFullscreenLap(capturedLapTime);
                 }
             }
             
-            // Stop button handler
+            // Stop button handler with debounce reset
             function handleStop() {
                 if (isRunning) {
                     // Stop the timer
@@ -585,11 +674,14 @@
                     // Reset button text
                     btnStartLap.textContent = "Start/Lap";
                     
+                    // Reset the debounce timer to allow immediate restart
+                    lastStartLapTime = 0;
+                    
                     btnStop.disabled = true;
                 }
             }
             
-            // Reset button handler
+            // Reset button handler with debounce reset
             function handleReset() {
                 // Reset all timer variables
                 isRunning = false;
@@ -601,6 +693,9 @@
                 prevLapTime = 0;
                 lastLapTime = 0;
                 lapTimes = [];
+                
+                // Reset the debounce timer too
+                lastStartLapTime = 0;
                 
                 // Re-enable scrolling
                 enableScroll();
@@ -632,32 +727,56 @@
                 fullscreenLap.style.display = 'none';
             }
             
-            // Add both click and touch event listeners
-            btnStartLap.addEventListener('click', handleStartLap);
-            btnStop.addEventListener('click', handleStop);
-            btnReset.addEventListener('click', handleReset);
-            btnBack.addEventListener('click', handleBack);
+            // ===== IMPROVED TOUCH HANDLING =====
+            // First, remove any existing event listeners to prevent duplicates
+            function safeAddEventListener(element, event, handler, options) {
+                // Check if element exists
+                if (!element) return;
+                
+                // Add the event listener with optional options
+                element.addEventListener(event, handler, options);
+            }
             
-            // Add touch event listeners for mobile
-            btnStartLap.addEventListener('touchend', function(e) {
-                e.preventDefault();
+            // Direct click handlers
+            safeAddEventListener(btnStartLap, 'click', function(e) {
+                console.log("Start/Lap click event");
                 handleStartLap();
             });
             
-            btnStop.addEventListener('touchend', function(e) {
+            safeAddEventListener(btnStop, 'click', handleStop);
+            safeAddEventListener(btnReset, 'click', handleReset);
+            safeAddEventListener(btnBack, 'click', handleBack);
+            
+            // Touch handling for Start/Lap - special case
+            safeAddEventListener(btnStartLap, 'touchstart', function(e) {
+                console.log("Start/Lap touchstart event");
+                // Prevent default to avoid any scrolling or zoom
                 e.preventDefault();
+                // Stop propagation to prevent any parent handlers
+                e.stopPropagation();
+                // Don't trigger click - directly call the handler
+                // This prevents any timing issues between touch and click events
+                handleStartLap();
+            }, { passive: false });
+            
+            // Other button touch handlers
+            safeAddEventListener(btnStop, 'touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 handleStop();
-            });
+            }, { passive: false });
             
-            btnReset.addEventListener('touchend', function(e) {
+            safeAddEventListener(btnReset, 'touchstart', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 handleReset();
-            });
+            }, { passive: false });
             
-            btnBack.addEventListener('touchend', function(e) {
+            safeAddEventListener(btnBack, 'touchstart', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 handleBack();
-            });
+            }, { passive: false });
             
             // Toggle display mode buttons
             function handleLapTimeBtn() {
@@ -675,15 +794,18 @@
             lapTimeBtn.addEventListener('click', handleLapTimeBtn);
             diffBtn.addEventListener('click', handleDiffBtn);
             
-            lapTimeBtn.addEventListener('touchend', function(e) {
+            // Toggle display button handlers 
+            safeAddEventListener(lapTimeBtn, 'touchstart', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 handleLapTimeBtn();
-            });
+            }, { passive: false });
             
-            diffBtn.addEventListener('touchend', function(e) {
+            safeAddEventListener(diffBtn, 'touchstart', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 handleDiffBtn();
-            });
+            }, { passive: false });
             
             // Add lap to history
             function addLapToHistory(lapTime) {
@@ -743,40 +865,74 @@
                 updatePerformanceAnalysis();
             }
             
-            // Show fullscreen lap display
+            // Show fullscreen lap display - COMPLETELY REWRITTEN
             function showFullscreenLap(lapTime) {
-                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
-                const targetDelta = 0; // No buffer, just use 0
+                console.log("==== FULLSCREEN DISPLAY ====");
+                console.log("Original lap time passed:", lapTime);
                 
-                // Determine background color based on time comparison
-                let bgColor;
-                if (lapTime < targetTime) {
-                    // Below target (good)
-                    bgColor = '#4CAF50'; // Green
-                } else {
-                    // Above target (bad)
-                    bgColor = '#f44336'; // Red
+                // CRITICAL: Force ensure we have a valid number
+                // This guards against any possible issue with the lap time
+                let safeTime = lapTime;
+                
+                if (isNaN(safeTime) || safeTime <= 0) {
+                    console.error("❌ Invalid lap time detected:", lapTime);
+                    console.log("Using fallback time of 1000ms");
+                    safeTime = 1000; // Default to 1 second if there's an issue
                 }
                 
-                // Set the background color
+                // Double check we have a number
+                safeTime = Number(safeTime);
+                console.log("Safe lap time:", safeTime, "Type:", typeof safeTime);
+                
+                // Get target time
+                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
+                console.log("Target time:", targetTime, "ms");
+                
+                // Set background color based on performance
+                const isFasterThanTarget = safeTime < targetTime;
+                const bgColor = isFasterThanTarget ? '#4CAF50' : '#f44336'; // Green if faster, Red if slower
+                console.log("Performance:", isFasterThanTarget ? "FASTER than target ✅" : "SLOWER than target ❌");
+                
+                // Apply the background color
                 fullscreenLap.style.backgroundColor = bgColor;
                 
+                // SIMPLIFIED DISPLAY LOGIC - ensures one path or the other
                 if (showDiff) {
-                    // Show difference from target instead of lap time
-                    // Invert the logic: faster (below target) = positive, slower (above target) = negative
-                    const diffMs = targetTime - lapTime; // Target minus lap time
+                    // Calculate difference from target
+                    const diffMs = targetTime - safeTime;
                     const diffSeconds = diffMs / 1000;
-                    // Round to 1 decimal place and add + sign if positive
-                    const formattedDiff = diffSeconds >= 0 
-                        ? `+${diffSeconds.toFixed(1)}` 
-                        : diffSeconds.toFixed(1);
+                    console.log("Time difference:", diffSeconds, "seconds");
+                    
+                    // Format with sign and fixed decimal
+                    const sign = diffSeconds >= 0 ? '+' : '';
+                    const formattedDiff = sign + diffSeconds.toFixed(1);
+                    console.log("Formatted difference:", formattedDiff);
+                    
+                    // Set display text
                     lapLarge.textContent = formattedDiff;
                 } else {
-                    // Set the large lap time display (only first digit and first decimal)
-                    lapLarge.textContent = formatLapDisplayTime(lapTime);
+                    // Show simple lap time (one digit and one decimal for readability)
+                    const seconds = safeTime / 1000;
+                    console.log("Seconds:", seconds);
+                    
+                    // Format for display - guaranteed simple format
+                    let displayText;
+                    if (seconds < 10) {
+                        // Display full time for times under 10 seconds (common in track cycling)
+                        displayText = seconds.toFixed(1);
+                    } else {
+                        // For longer times, just show last digit and first decimal
+                        const lastDigit = Math.floor(seconds) % 10;
+                        const firstDecimal = Math.floor((seconds * 10) % 10);
+                        displayText = `${lastDigit}.${firstDecimal}`;
+                    }
+                    
+                    console.log("Final display:", displayText);
+                    lapLarge.textContent = displayText;
                 }
                 
-                // Show the fullscreen display
+                // Make display visible
+                console.log("Making fullscreen display visible");
                 fullscreenLap.style.display = 'flex';
             }
             
@@ -904,142 +1060,232 @@
                 }
             }
             
-            // Copy history to clipboard
-            copyHistoryBtn.addEventListener('click', function() {
-                let historyText = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
+            // Completely rewritten copy history function
+            safeAddEventListener(copyHistoryBtn, 'click', function(e) {
+                console.log("Copy button clicked");
                 
-                // Get all rows from the history table
+                // Check if we have any data to copy
                 const rows = historyBody.querySelectorAll('tr');
+                if (rows.length === 0) {
+                    showToast("No lap data to copy", false);
+                    return;
+                }
                 
-                // Convert each row to tab-separated text
-                rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    const rowText = Array.from(cells).map(cell => cell.textContent).join('\t');
-                    historyText += rowText + '\n';
-                });
+                // Update button state
+                function updateButtonState(isSuccess) {
+                    copyHistoryBtn.textContent = isSuccess ? 'Copied!' : 'Copy';
+                    copyHistoryBtn.style.backgroundColor = isSuccess ? '#4CAF50' : '#607D8B';
+                    setTimeout(() => {
+                        copyHistoryBtn.textContent = 'Copy';
+                        copyHistoryBtn.style.backgroundColor = '#607D8B';
+                    }, 2000);
+                }
                 
-                // Method 1: Use Clipboard API with fallback
-                const copyToClipboard = async (text) => {
-                    // Create a notification message
-                    const notification = document.createElement('div');
-                    notification.style.position = 'fixed';
-                    notification.style.bottom = '20px';
-                    notification.style.left = '50%';
-                    notification.style.transform = 'translateX(-50%)';
-                    notification.style.backgroundColor = '#333';
-                    notification.style.color = 'white';
-                    notification.style.padding = '10px 20px';
-                    notification.style.borderRadius = '5px';
-                    notification.style.zIndex = '1000';
-                    notification.textContent = 'Copied to clipboard!';
-                    notification.style.display = 'none';
-                    document.body.appendChild(notification);
-
-                    // Show notification
-                    const showNotification = (message, isSuccess) => {
-                        notification.textContent = message;
-                        notification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
-                        notification.style.display = 'block';
-                        setTimeout(() => {
-                            notification.style.display = 'none';
-                            document.body.removeChild(notification);
-                        }, 3000);
-                    };
+                // Generate formatted text from lap history
+                function generateHistoryText() {
+                    // Create header
+                    let text = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
                     
-                    // Try all available methods
+                    // Format each row
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length > 0) {
+                            const rowValues = Array.from(cells).map(cell => cell.textContent.trim());
+                            text += rowValues.join('\t') + '\n';
+                        }
+                    });
+                    
+                    return text;
+                }
+                
+                // Create manual copy popup if automatic methods fail
+                function showManualCopyInterface(text) {
+                    // Create modal backdrop
+                    const modal = document.createElement('div');
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100%';
+                    modal.style.height = '100%';
+                    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                    modal.style.zIndex = '9999';
+                    modal.style.display = 'flex';
+                    modal.style.flexDirection = 'column';
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
+                    modal.style.padding = '20px';
+                    
+                    // Create content container
+                    const container = document.createElement('div');
+                    container.style.backgroundColor = '#333';
+                    container.style.width = '90%';
+                    container.style.maxWidth = '600px';
+                    container.style.borderRadius = '8px';
+                    container.style.padding = '20px';
+                    container.style.display = 'flex';
+                    container.style.flexDirection = 'column';
+                    container.style.gap = '15px';
+                    
+                    // Add title
+                    const title = document.createElement('h3');
+                    title.textContent = 'Copy Lap History';
+                    title.style.color = 'white';
+                    title.style.margin = '0';
+                    
+                    // Add instructions
+                    const instructions = document.createElement('p');
+                    instructions.textContent = 'Select all text and copy using Ctrl+C or Cmd+C:';
+                    instructions.style.color = 'white';
+                    instructions.style.margin = '0';
+                    
+                    // Add textarea with data
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    textArea.style.width = '100%';
+                    textArea.style.height = '200px';
+                    textArea.style.padding = '10px';
+                    textArea.style.borderRadius = '4px';
+                    textArea.style.backgroundColor = '#222';
+                    textArea.style.color = 'white';
+                    textArea.style.border = '1px solid #444';
+                    
+                    // Add buttons container
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.style.display = 'flex';
+                    buttonContainer.style.justifyContent = 'space-between';
+                    buttonContainer.style.marginTop = '10px';
+                    
+                    // Try copy button
+                    const copyBtn = document.createElement('button');
+                    copyBtn.textContent = 'Try Copy Again';
+                    copyBtn.style.padding = '10px 20px';
+                    copyBtn.style.backgroundColor = '#2196F3';
+                    copyBtn.style.color = 'white';
+                    copyBtn.style.border = 'none';
+                    copyBtn.style.borderRadius = '4px';
+                    copyBtn.style.cursor = 'pointer';
+                    
+                    // Close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.textContent = 'Close';
+                    closeBtn.style.padding = '10px 20px';
+                    closeBtn.style.backgroundColor = '#607D8B';
+                    closeBtn.style.color = 'white';
+                    closeBtn.style.border = 'none';
+                    closeBtn.style.borderRadius = '4px';
+                    closeBtn.style.cursor = 'pointer';
+                    
+                    // Assemble the modal
+                    buttonContainer.appendChild(copyBtn);
+                    buttonContainer.appendChild(closeBtn);
+                    
+                    container.appendChild(title);
+                    container.appendChild(instructions);
+                    container.appendChild(textArea);
+                    container.appendChild(buttonContainer);
+                    
+                    modal.appendChild(container);
+                    document.body.appendChild(modal);
+                    
+                    // Select text for easy copying
+                    setTimeout(() => {
+                        textArea.focus();
+                        textArea.select();
+                    }, 100);
+                    
+                    // Button event handlers
+                    copyBtn.addEventListener('click', function() {
+                        textArea.select();
+                        document.execCommand('copy');
+                        showToast('Text selected! Use Ctrl+C to copy', true);
+                    });
+                    
+                    closeBtn.addEventListener('click', function() {
+                        document.body.removeChild(modal);
+                    });
+                }
+                
+                // Execute copy with multiple fallbacks
+                async function executeCopy() {
+                    const historyText = generateHistoryText();
+                    console.log("Generated history text:", historyText.slice(0, 100) + "...");
+                    
                     try {
-                        // Method 1: Modern clipboard API
+                        // Method 1: Modern Clipboard API (most reliable)
                         if (navigator.clipboard && navigator.clipboard.writeText) {
-                            await navigator.clipboard.writeText(text);
-                            copyHistoryBtn.textContent = 'Copied!';
-                            setTimeout(() => { copyHistoryBtn.textContent = 'Copy'; }, 2000);
-                            showNotification('Copied to clipboard!', true);
-                            return true;
+                            try {
+                                await navigator.clipboard.writeText(historyText);
+                                console.log("Clipboard API success");
+                                updateButtonState(true);
+                                showToast('Copied to clipboard!', true);
+                                return;
+                            } catch (err) {
+                                console.error("Clipboard API error:", err);
+                                // Fall through to next method
+                            }
                         }
                         
-                        // Method 2: Copy command with textarea
+                        // Method 2: document.execCommand (older browsers)
                         const textarea = document.createElement('textarea');
-                        textarea.value = text;
+                        textarea.value = historyText;
                         textarea.style.position = 'fixed';
-                        textarea.style.opacity = '0';
+                        textarea.style.left = '-999999px';
+                        textarea.style.top = '-999999px';
                         document.body.appendChild(textarea);
                         textarea.focus();
                         textarea.select();
                         
-                        const successful = document.execCommand('copy');
+                        const success = document.execCommand('copy');
                         document.body.removeChild(textarea);
                         
-                        if (successful) {
-                            copyHistoryBtn.textContent = 'Copied!';
-                            setTimeout(() => { copyHistoryBtn.textContent = 'Copy'; }, 2000);
-                            showNotification('Copied to clipboard!', true);
-                            return true;
+                        if (success) {
+                            console.log("execCommand success");
+                            updateButtonState(true);
+                            showToast('Copied to clipboard!', true);
+                            return;
                         }
                         
-                        // Method 3: Create a text field and select it for manual copy
-                        const container = document.createElement('div');
-                        container.style.position = 'fixed';
-                        container.style.top = '0';
-                        container.style.left = '0';
-                        container.style.width = '100%';
-                        container.style.height = '100%';
-                        container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                        container.style.zIndex = '9999';
-                        container.style.display = 'flex';
-                        container.style.flexDirection = 'column';
-                        container.style.alignItems = 'center';
-                        container.style.justifyContent = 'center';
-                        container.style.padding = '20px';
+                        // Method 3: Show manual interface as last resort
+                        console.log("Falling back to manual copy interface");
+                        showManualCopyInterface(historyText);
                         
-                        const textArea = document.createElement('textarea');
-                        textArea.value = text;
-                        textArea.style.width = '90%';
-                        textArea.style.height = '60%';
-                        textArea.style.padding = '10px';
-                        textArea.style.marginBottom = '20px';
-                        textArea.style.borderRadius = '5px';
-                        
-                        const closeBtn = document.createElement('button');
-                        closeBtn.textContent = 'Close';
-                        closeBtn.style.padding = '10px 20px';
-                        closeBtn.style.borderRadius = '5px';
-                        closeBtn.style.backgroundColor = '#4CAF50';
-                        closeBtn.style.color = 'white';
-                        closeBtn.style.border = 'none';
-                        closeBtn.style.cursor = 'pointer';
-                        
-                        container.appendChild(textArea);
-                        container.appendChild(closeBtn);
-                        document.body.appendChild(container);
-                        
-                        textArea.focus();
-                        textArea.select();
-                        
-                        document.execCommand('copy');
-                        showNotification('Please select and copy the text manually', false);
-                        
-                        closeBtn.addEventListener('click', () => {
-                            document.body.removeChild(container);
-                        });
-                        
-                        return false;
                     } catch (err) {
-                        console.error('Copy error:', err);
-                        showNotification('Copy failed. Please try selecting manually.', false);
-                        return false;
+                        console.error("Copy operation failed:", err);
+                        showToast('Could not copy automatically', false);
+                        showManualCopyInterface(historyText);
                     }
-                };
+                }
                 
-                copyToClipboard(historyText);
+                // Start the copy process
+                executeCopy();
             });
             
-            // Prevent scrolling when touching buttons on mobile
-            document.querySelectorAll('.btn, .toggle-btn').forEach(btn => {
-                btn.addEventListener('touchend', function(e) {
+            // Also add touch handler for copy button
+            safeAddEventListener(copyHistoryBtn, 'touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                copyHistoryBtn.click();
+            }, { passive: false });
+            
+            // Universal touch handler for all other buttons - for better touch response
+            document.querySelectorAll('.btn:not(#btnStartLap):not(#btnStop):not(#btnReset):not(#btnBack), .toggle-btn:not(#lapTimeBtn):not(#diffBtn)').forEach(btn => {
+                safeAddEventListener(btn, 'touchstart', function(e) {
+                    console.log("Generic button touchstart:", e.target.id || "unknown button");
                     e.preventDefault();
-                    // Trigger a click event to ensure the button action happens
-                    e.target.click();
-                });
+                    e.stopPropagation();
+                    
+                    // Highlight the button visually to show it's being pressed
+                    const originalBg = e.target.style.backgroundColor;
+                    e.target.style.backgroundColor = '#555';
+                    
+                    // Direct action instead of synthetic click
+                    setTimeout(function() {
+                        // Reset appearance
+                        e.target.style.backgroundColor = originalBg;
+                        // Trigger click without delay
+                        e.target.click();
+                    }, 50); // Very slight delay for visual feedback
+                }, { passive: false });
             });
         });
     </script>
