@@ -27,6 +27,8 @@
             width: 100%;
             margin: 0 auto;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
         }
         
         .section {
@@ -83,7 +85,7 @@
         .btn {
             flex: 1;
             margin: 0 5px;
-            padding: 22px 15px; /* Increased height by 50% */
+            padding: 33px 15px; /* Increased height by another 50% */
             border: none;
             border-radius: 5px;
             font-size: 1.1rem;
@@ -276,22 +278,43 @@
         }
         
         .lap-large {
-            font-size: 25rem;
+            font-size: 35rem; /* Increased from 25rem */
             font-weight: 900;
             line-height: 1;
             text-shadow: 
-                -4px -4px 0 #000,
-                4px -4px 0 #000,
-                -4px 4px 0 #000,
-                4px 4px 0 #000,
-                0 -6px 10px rgba(0, 0, 0, 0.7),
-                0 6px 10px rgba(0, 0, 0, 0.7);
+                -6px -6px 0 #000,
+                6px -6px 0 #000,
+                -6px 6px 0 #000,
+                6px 6px 0 #000,
+                0 -8px 14px rgba(0, 0, 0, 0.7),
+                0 8px 14px rgba(0, 0, 0, 0.7);
         }
         
         body.no-scroll {
             overflow: hidden;
             position: fixed;
             width: 100%;
+        }
+        
+        /* Positions for main sections */
+        #timerSection {
+            order: 1;
+        }
+        
+        #settingsSection {
+            order: 2;
+        }
+        
+        #analysisSection {
+            order: 3;
+        }
+        
+        #shareSection {
+            order: 4;
+        }
+        
+        #historySection {
+            order: 5; /* Ensures it's at the bottom */
         }
         
         /* Responsive adjustments */
@@ -305,12 +328,12 @@
             }
             
             .btn {
-                padding: 18px 8px; /* Increased height by 50% */
+                padding: 27px 8px; /* Increased height by 50% for mobile as well */
                 font-size: 1rem;
             }
             
             .lap-large {
-                font-size: 20rem;
+                font-size: 28rem; /* Increased from 20rem */
             }
             
             .analysis-value {
@@ -321,8 +344,13 @@
 </head>
 <body>
     <div class="container">
-        <div class="section">
+        <!-- Timer Section -->
+        <div class="section" id="timerSection">
             <div class="timer-display">
+                <div class="time-box">
+                    <div class="time-label">Laps Left</div>
+                    <div class="time-value" id="lapsLeft">10</div>
+                </div>
                 <div class="time-box">
                     <div class="time-label">Current Lap</div>
                     <div class="time-value" id="currentLap">00:00.0</div>
@@ -339,12 +367,17 @@
             </div>
         </div>
         
-        <div class="section">
+        <!-- Settings Section -->
+        <div class="section" id="settingsSection">
             <h2 class="section-title">Settings</h2>
             <div class="settings-row">
                 <div class="input-group">
                     <label class="input-label" for="targetTime">Target Time (s)</label>
                     <input type="number" class="input-field half-width" id="targetTime" value="20" min="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" for="targetLaps">Number of Laps</label>
+                    <input type="number" class="input-field half-width" id="targetLaps" value="10" min="1" step="1">
                 </div>
                 <div class="input-group">
                     <label class="input-label">Fullscreen Display</label>
@@ -356,7 +389,8 @@
             </div>
         </div>
         
-        <div class="section">
+        <!-- Analysis Section -->
+        <div class="section" id="analysisSection">
             <h2 class="section-title">Performance Analysis</h2>
             <div class="analysis-grid">
                 <div class="analysis-item">
@@ -377,8 +411,10 @@
             </div>
         </div>
         
-        <div class="section">
-            <h2 class="section-title">Lap History <button id="copyHistory" class="btn" style="font-size: 0.8rem; padding: 5px 10px; float: right;">Copy</button></h2>
+        <!-- Share History Section (initially hidden) - REMOVED -->
+        <!-- Lap History Section (always at the bottom) -->
+        <div class="section" id="historySection">
+            <h2 class="section-title">Lap History <button id="copyHistory" class="btn" style="font-size: 0.9rem; padding: 8px 15px; float: right;">Copy</button></h2>
             <div class="history">
                 <table class="history-table">
                     <thead>
@@ -450,6 +486,7 @@
             let lapNumber = 0;
             let prevLapTime = 0;
             let lastLapTime = 0;
+            let lapsRemaining = 10; // Initialize with default
             
             // Debounce tracking for double-tap prevention
             let lastStartLapTime = 0;
@@ -472,7 +509,8 @@
             const lapLarge = document.getElementById('lapLarge');
             const btnBack = document.getElementById('btnBack');
             const targetTimeInput = document.getElementById('targetTime');
-            const copyHistoryBtn = document.getElementById('copyHistory');
+            const targetLapsInput = document.getElementById('targetLaps');
+            const lapsLeftEl = document.getElementById('lapsLeft');
             
             // Performance analysis elements
             const bestLapEl = document.getElementById('bestLap');
@@ -484,8 +522,14 @@
             const lapTimeBtn = document.getElementById('lapTimeBtn');
             const diffBtn = document.getElementById('diffBtn');
             
-            // Initialize buttons
-            btnStop.disabled = true;
+            // Initialize the laps remaining display
+            lapsLeftEl.textContent = targetLapsInput.value;
+            
+            // Update laps when the input changes
+            targetLapsInput.addEventListener('change', function() {
+                lapsRemaining = parseInt(targetLapsInput.value, 10);
+                lapsLeftEl.textContent = lapsRemaining;
+            });
             
             // Format time function with two decimal places, but hide trailing zeros
             function formatTime(timeInMs) {
@@ -620,6 +664,13 @@
                     lapStartTime = currentTime;
                     btnStop.disabled = false;
                     
+                    // Initialize lap counter from settings and decrease by 1 for the start
+                    lapsRemaining = parseInt(targetLapsInput.value, 10);
+                    if (lapsRemaining > 0) {
+                        lapsRemaining--; // Decrease by 1 when starting
+                    }
+                    lapsLeftEl.textContent = lapsRemaining;
+                    
                     // Disable scrolling when timer starts
                     disableScroll();
                     
@@ -642,6 +693,19 @@
                     // Update history
                     addLapToHistory(capturedLapTime);
                     
+                    // Update lap counter
+                    if (lapsRemaining > 0) {
+                        lapsRemaining--;
+                        lapsLeftEl.textContent = lapsRemaining;
+                        
+                        // Check if all laps completed
+                        if (lapsRemaining === 0) {
+                            // Visual indication that laps are complete
+                            lapsLeftEl.style.color = '#4CAF50';
+                            showToast("All laps completed!", true);
+                        }
+                    }
+                    
                     // Reset lap timer for next lap
                     lapStartTime = currentTime;
                     prevLapTime = capturedLapTime;
@@ -663,13 +727,10 @@
                     // Re-enable scrolling when timer stops
                     enableScroll();
                     
-                    // Record the last lap time
+                    // Record the time values but don't add to history
                     const currentTime = Date.now();
                     lastLapTime = currentTime - lapStartTime;
                     totalTime += (currentTime - startTime);
-                    
-                    // Record the lap in history
-                    addLapToHistory(lastLapTime);
                     
                     // Reset button text
                     btnStartLap.textContent = "Start/Lap";
@@ -696,6 +757,11 @@
                 
                 // Reset the debounce timer too
                 lastStartLapTime = 0;
+                
+                // Reset lap counter from settings
+                lapsRemaining = parseInt(targetLapsInput.value, 10);
+                lapsLeftEl.textContent = lapsRemaining;
+                lapsLeftEl.style.color = ''; // Reset color
                 
                 // Re-enable scrolling
                 enableScroll();
@@ -778,6 +844,19 @@
                 handleBack();
             }, { passive: false });
             
+            // Toggle display button handlers 
+            safeAddEventListener(lapTimeBtn, 'touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLapTimeBtn();
+            }, { passive: false });
+            
+            safeAddEventListener(diffBtn, 'touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDiffBtn();
+            }, { passive: false });
+            
             // Toggle display mode buttons
             function handleLapTimeBtn() {
                 showDiff = false;
@@ -791,21 +870,29 @@
                 lapTimeBtn.classList.remove('toggle-active');
             }
             
-            lapTimeBtn.addEventListener('click', handleLapTimeBtn);
-            diffBtn.addEventListener('click', handleDiffBtn);
+            safeAddEventListener(lapTimeBtn, 'click', handleLapTimeBtn);
+            safeAddEventListener(diffBtn, 'click', handleDiffBtn);
             
-            // Toggle display button handlers 
-            safeAddEventListener(lapTimeBtn, 'touchstart', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                handleLapTimeBtn();
-            }, { passive: false });
-            
-            safeAddEventListener(diffBtn, 'touchstart', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDiffBtn();
-            }, { passive: false });
+            // Universal touch handler for all other buttons - for better touch response
+            document.querySelectorAll('.btn:not(#btnStartLap):not(#btnStop):not(#btnReset):not(#btnBack), .toggle-btn:not(#lapTimeBtn):not(#diffBtn)').forEach(btn => {
+                safeAddEventListener(btn, 'touchstart', function(e) {
+                    console.log("Generic button touchstart:", e.target.id || "unknown button");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Highlight the button visually to show it's being pressed
+                    const originalBg = e.target.style.backgroundColor;
+                    e.target.style.backgroundColor = '#555';
+                    
+                    // Direct action instead of synthetic click
+                    setTimeout(function() {
+                        // Reset appearance
+                        e.target.style.backgroundColor = originalBg;
+                        // Trigger click without delay
+                        e.target.click();
+                    }, 50); // Very slight delay for visual feedback
+                }, { passive: false });
+            });
             
             // Add lap to history
             function addLapToHistory(lapTime) {
@@ -1060,233 +1147,189 @@
                 }
             }
             
-            // Completely rewritten copy history function
-            safeAddEventListener(copyHistoryBtn, 'click', function(e) {
-                console.log("Copy button clicked");
+            // Mobile-friendly in-place copy solution - completely rewritten
+            const copyHistoryBtn = document.getElementById('copyHistory');
+            
+            // Generate formatted text from lap history
+            function generateHistoryText() {
+                const rows = historyBody.querySelectorAll('tr');
                 
-                // Check if we have any data to copy
+                // Create header
+                let text = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
+                
+                // Format each row
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length > 0) {
+                        const rowValues = Array.from(cells).map(cell => cell.textContent.trim());
+                        text += rowValues.join('\t') + '\n';
+                    }
+                });
+                
+                return text;
+            }
+            
+            // Track if the overlay is currently shown to prevent multiple overlays
+            let isOverlayShown = false;
+            
+            // Detect iOS for specialized handling
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            
+            // Simple copy approach - completely rewritten with no event delegation
+            safeAddEventListener(copyHistoryBtn, 'click', function() {
+                // Prevent multiple overlays
+                if (isOverlayShown) return;
+                
+                // Check if we have data
                 const rows = historyBody.querySelectorAll('tr');
                 if (rows.length === 0) {
                     showToast("No lap data to copy", false);
                     return;
                 }
                 
-                // Update button state
-                function updateButtonState(isSuccess) {
-                    copyHistoryBtn.textContent = isSuccess ? 'Copied!' : 'Copy';
-                    copyHistoryBtn.style.backgroundColor = isSuccess ? '#4CAF50' : '#607D8B';
-                    setTimeout(() => {
-                        copyHistoryBtn.textContent = 'Copy';
-                        copyHistoryBtn.style.backgroundColor = '#607D8B';
-                    }, 2000);
-                }
+                // Generate text
+                const text = generateHistoryText();
                 
-                // Generate formatted text from lap history
-                function generateHistoryText() {
-                    // Create header
-                    let text = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
-                    
-                    // Format each row
-                    rows.forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length > 0) {
-                            const rowValues = Array.from(cells).map(cell => cell.textContent.trim());
-                            text += rowValues.join('\t') + '\n';
-                        }
-                    });
-                    
-                    return text;
-                }
+                // Set overlay flag
+                isOverlayShown = true;
                 
-                // Create manual copy popup if automatic methods fail
-                function showManualCopyInterface(text) {
-                    // Create modal backdrop
-                    const modal = document.createElement('div');
-                    modal.style.position = 'fixed';
-                    modal.style.top = '0';
-                    modal.style.left = '0';
-                    modal.style.width = '100%';
-                    modal.style.height = '100%';
-                    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                    modal.style.zIndex = '9999';
-                    modal.style.display = 'flex';
-                    modal.style.flexDirection = 'column';
-                    modal.style.alignItems = 'center';
-                    modal.style.justifyContent = 'center';
-                    modal.style.padding = '20px';
-                    
-                    // Create content container
-                    const container = document.createElement('div');
-                    container.style.backgroundColor = '#333';
-                    container.style.width = '90%';
-                    container.style.maxWidth = '600px';
-                    container.style.borderRadius = '8px';
-                    container.style.padding = '20px';
-                    container.style.display = 'flex';
-                    container.style.flexDirection = 'column';
-                    container.style.gap = '15px';
-                    
-                    // Add title
-                    const title = document.createElement('h3');
-                    title.textContent = 'Copy Lap History';
-                    title.style.color = 'white';
-                    title.style.margin = '0';
-                    
-                    // Add instructions
-                    const instructions = document.createElement('p');
-                    instructions.textContent = 'Select all text and copy using Ctrl+C or Cmd+C:';
-                    instructions.style.color = 'white';
-                    instructions.style.margin = '0';
-                    
-                    // Add textarea with data
-                    const textArea = document.createElement('textarea');
-                    textArea.value = text;
-                    textArea.style.width = '100%';
-                    textArea.style.height = '200px';
-                    textArea.style.padding = '10px';
-                    textArea.style.borderRadius = '4px';
-                    textArea.style.backgroundColor = '#222';
-                    textArea.style.color = 'white';
-                    textArea.style.border = '1px solid #444';
-                    
-                    // Add buttons container
-                    const buttonContainer = document.createElement('div');
-                    buttonContainer.style.display = 'flex';
-                    buttonContainer.style.justifyContent = 'space-between';
-                    buttonContainer.style.marginTop = '10px';
-                    
-                    // Try copy button
-                    const copyBtn = document.createElement('button');
-                    copyBtn.textContent = 'Try Copy Again';
-                    copyBtn.style.padding = '10px 20px';
-                    copyBtn.style.backgroundColor = '#2196F3';
-                    copyBtn.style.color = 'white';
-                    copyBtn.style.border = 'none';
-                    copyBtn.style.borderRadius = '4px';
-                    copyBtn.style.cursor = 'pointer';
-                    
-                    // Close button
-                    const closeBtn = document.createElement('button');
-                    closeBtn.textContent = 'Close';
-                    closeBtn.style.padding = '10px 20px';
-                    closeBtn.style.backgroundColor = '#607D8B';
-                    closeBtn.style.color = 'white';
-                    closeBtn.style.border = 'none';
-                    closeBtn.style.borderRadius = '4px';
-                    closeBtn.style.cursor = 'pointer';
-                    
-                    // Assemble the modal
-                    buttonContainer.appendChild(copyBtn);
-                    buttonContainer.appendChild(closeBtn);
-                    
-                    container.appendChild(title);
-                    container.appendChild(instructions);
-                    container.appendChild(textArea);
-                    container.appendChild(buttonContainer);
-                    
-                    modal.appendChild(container);
-                    document.body.appendChild(modal);
-                    
-                    // Select text for easy copying
-                    setTimeout(() => {
-                        textArea.focus();
-                        textArea.select();
-                    }, 100);
-                    
-                    // Button event handlers
-                    copyBtn.addEventListener('click', function() {
-                        textArea.select();
-                        document.execCommand('copy');
-                        showToast('Text selected! Use Ctrl+C to copy', true);
-                    });
-                    
-                    closeBtn.addEventListener('click', function() {
-                        document.body.removeChild(modal);
-                    });
-                }
+                // Get history section
+                const historySection = document.getElementById('historySection');
+                historySection.style.position = 'relative'; // Ensure positioning context
                 
-                // Execute copy with multiple fallbacks
-                async function executeCopy() {
-                    const historyText = generateHistoryText();
-                    console.log("Generated history text:", historyText.slice(0, 100) + "...");
-                    
-                    try {
-                        // Method 1: Modern Clipboard API (most reliable)
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            try {
-                                await navigator.clipboard.writeText(historyText);
-                                console.log("Clipboard API success");
-                                updateButtonState(true);
-                                showToast('Copied to clipboard!', true);
-                                return;
-                            } catch (err) {
-                                console.error("Clipboard API error:", err);
-                                // Fall through to next method
-                            }
-                        }
-                        
-                        // Method 2: document.execCommand (older browsers)
-                        const textarea = document.createElement('textarea');
-                        textarea.value = historyText;
-                        textarea.style.position = 'fixed';
-                        textarea.style.left = '-999999px';
-                        textarea.style.top = '-999999px';
-                        document.body.appendChild(textarea);
-                        textarea.focus();
-                        textarea.select();
-                        
-                        const success = document.execCommand('copy');
-                        document.body.removeChild(textarea);
-                        
-                        if (success) {
-                            console.log("execCommand success");
-                            updateButtonState(true);
-                            showToast('Copied to clipboard!', true);
-                            return;
-                        }
-                        
-                        // Method 3: Show manual interface as last resort
-                        console.log("Falling back to manual copy interface");
-                        showManualCopyInterface(historyText);
-                        
-                    } catch (err) {
-                        console.error("Copy operation failed:", err);
-                        showToast('Could not copy automatically', false);
-                        showManualCopyInterface(historyText);
+                // Create overlay container
+                const overlay = document.createElement('div');
+                overlay.id = "copyOverlay";
+                overlay.style.position = 'absolute';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.right = '0';
+                overlay.style.bottom = '0';
+                overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                overlay.style.zIndex = '100';
+                overlay.style.display = 'flex';
+                overlay.style.flexDirection = 'column';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.padding = '20px';
+                overlay.style.touchAction = 'none'; // Prevent scrolling
+                
+                // Create the internal container
+                const container = document.createElement('div');
+                container.style.width = '100%';
+                container.style.maxWidth = '500px';
+                container.style.padding = '0';
+                container.style.backgroundColor = 'transparent';
+                container.style.borderRadius = '8px';
+                overlay.appendChild(container);
+                
+                // Create header with title and done button
+                const header = document.createElement('div');
+                header.style.width = '100%';
+                header.style.display = 'flex';
+                header.style.justifyContent = 'space-between';
+                header.style.alignItems = 'center';
+                header.style.marginBottom = '15px';
+                container.appendChild(header);
+                
+                // Add title
+                const title = document.createElement('div');
+                title.textContent = isIOS ? 
+                    'Tap and hold text, then select "Copy"' : 
+                    'Select all and copy:';
+                title.style.color = 'white';
+                title.style.fontSize = '14px';
+                title.style.flex = '1';
+                header.appendChild(title);
+                
+                // Add done button
+                const doneBtn = document.createElement('button');
+                doneBtn.textContent = 'Done';
+                doneBtn.style.padding = '8px 15px';
+                doneBtn.style.backgroundColor = '#4CAF50';
+                doneBtn.style.color = 'white';
+                doneBtn.style.border = 'none';
+                doneBtn.style.borderRadius = '5px';
+                doneBtn.style.fontSize = '16px';
+                doneBtn.style.marginLeft = '10px';
+                doneBtn.style.cursor = 'pointer';
+                header.appendChild(doneBtn);
+                
+                // Create text field
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.width = '100%';
+                textarea.style.height = '120px';
+                textarea.style.padding = '10px';
+                textarea.style.backgroundColor = '#333';
+                textarea.style.color = 'white';
+                textarea.style.border = '1px solid #555';
+                textarea.style.borderRadius = '5px';
+                textarea.style.fontSize = '16px'; // Important for iOS
+                container.appendChild(textarea);
+                
+                // Add overlay to page
+                historySection.appendChild(overlay);
+                
+                // Focus and select text
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.select();
+                }, 100);
+                
+                // Define the close function
+                function closeOverlay() {
+                    if (historySection.contains(overlay)) {
+                        historySection.removeChild(overlay);
+                        isOverlayShown = false;
                     }
                 }
                 
-                // Start the copy process
-                executeCopy();
+                // Add done button listener - defined here to avoid multiple attachments
+                doneBtn.onclick = function(e) {
+                    e.preventDefault();
+                    closeOverlay();
+                };
+                
+                // Background click handler - use mousedown instead of click
+                overlay.addEventListener('mousedown', function(e) {
+                    if (e.target === overlay) {
+                        closeOverlay();
+                    }
+                });
+                
+                // For touch devices
+                overlay.addEventListener('touchstart', function(e) {
+                    if (e.target === overlay) {
+                        closeOverlay();
+                    }
+                });
+                
+                // Update button
+                copyHistoryBtn.textContent = 'Copy Ready';
+                setTimeout(() => {
+                    if (!isOverlayShown) {
+                        copyHistoryBtn.textContent = 'Copy';
+                    }
+                }, 2000);
             });
             
-            // Also add touch handler for copy button
+            // Handle touch events for copy button
             safeAddEventListener(copyHistoryBtn, 'touchstart', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                copyHistoryBtn.click();
+                
+                // Visual feedback
+                const originalColor = copyHistoryBtn.style.backgroundColor;
+                copyHistoryBtn.style.backgroundColor = '#555';
+                copyHistoryBtn.style.transform = 'scale(0.95)';
+                
+                setTimeout(() => {
+                    copyHistoryBtn.style.backgroundColor = originalColor;
+                    copyHistoryBtn.style.transform = 'scale(1)';
+                    copyHistoryBtn.click();
+                }, 100);
             }, { passive: false });
-            
-            // Universal touch handler for all other buttons - for better touch response
-            document.querySelectorAll('.btn:not(#btnStartLap):not(#btnStop):not(#btnReset):not(#btnBack), .toggle-btn:not(#lapTimeBtn):not(#diffBtn)').forEach(btn => {
-                safeAddEventListener(btn, 'touchstart', function(e) {
-                    console.log("Generic button touchstart:", e.target.id || "unknown button");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Highlight the button visually to show it's being pressed
-                    const originalBg = e.target.style.backgroundColor;
-                    e.target.style.backgroundColor = '#555';
-                    
-                    // Direct action instead of synthetic click
-                    setTimeout(function() {
-                        // Reset appearance
-                        e.target.style.backgroundColor = originalBg;
-                        // Trigger click without delay
-                        e.target.click();
-                    }, 50); // Very slight delay for visual feedback
-                }, { passive: false });
-            });
         });
     </script>
 </body>
