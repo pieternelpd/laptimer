@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Track Cycling Lap Timer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #222;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #333;
+            border-radius: 8px;
+        }
+        
+        .section-title {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .timer-display {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .time-box {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background-color: #444;
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        
+        .time-box:first-child {
+            margin-left: 0;
+        }
+        
+        .time-box:last-child {
+            margin-right: 0;
+        }
+        
+        .time-label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        
+        .time-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .btn {
+            flex: 1;
+            margin: 0 5px;
+            padding: 22px 15px; /* Increased height by 50% */
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        .btn:first-child {
+            margin-left: 0;
+        }
+        
+        .btn:last-child {
+            margin-right: 0;
+        }
+        
+        .btn-start {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .btn-stop {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .btn-reset {
+            background-color: #607D8B;
+            color: white;
+        }
+        
+        .btn-back {
+            background-color: #607D8B;
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+        }
+        
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin: 0 5px;
+        }
+        
+        .input-group:first-child {
+            margin-left: 0;
+        }
+        
+        .input-group:last-child {
+            margin-right: 0;
+        }
+        
+        .input-label {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .input-field {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .half-width {
+            width: 50%;
+        }
+        
+        .toggle-container {
+            display: flex;
+            width: 100%;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #333;
+            border: 1px solid #555;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background-color: #333;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .toggle-btn:first-child {
+            border-right: 1px solid #555;
+        }
+        
+        .toggle-active {
+            background-color: #2196F3;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .analysis-grid {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        .analysis-item {
+            flex: 1;
+            background-color: #444;
+            padding: 12px;
+            border-radius: 5px;
+            text-align: center;
+            min-width: 0;
+        }
+        
+        .analysis-label {
+            font-size: 0.9rem;
+            margin-right: 5px;
+            opacity: 0.8;
+        }
+        
+        .analysis-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .lap-chart-container {
+            width: 100%;
+            height: 200px;
+            background-color: #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .history {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .history-table th, 
+        .history-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
+        
+        .history-controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        
+        .fullscreen-lap {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .lap-large {
+            font-size: 25rem;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 
+                -4px -4px 0 #000,
+                4px -4px 0 #000,
+                -4px 4px 0 #000,
+                4px 4px 0 #000,
+                0 -6px 10px rgba(0, 0, 0, 0.7),
+                0 6px 10px rgba(0, 0, 0, 0.7);
+        }
+        
+        body.no-scroll {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .time-value {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 18px 8px; /* Increased height by 50% */
+                font-size: 1rem;
+            }
+            
+            .lap-large {
+                font-size: 20rem;
+            }
+            
+            .analysis-grid {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .analysis-value {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="section">
+            <div class="timer-display">
+                <div class="time-box">
+                    <div class="time-label">Current Lap</div>
+                    <div class="time-value" id="currentLap">00:00.0</div>
+                </div>
+                <div class="time-box">
+                    <div class="time-label">Total Time</div>
+                    <div class="time-value" id="totalTime">00:00.0</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-start" id="btnStartLap">Start/Lap</button>
+                <button class="btn btn-stop" id="btnStop">Stop</button>
+                <button class="btn btn-reset" id="btnReset">Reset</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">Settings</h2>
+            <div class="settings-row">
+                <div class="input-group">
+                    <label class="input-label" for="targetTime">Target Time (s)</label>
+                    <input type="number" class="input-field half-width" id="targetTime" value="20" min="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" for="targetDelta">Buffer from Target (+-) (s)</label>
+                    <input type="number" class="input-field half-width" id="targetDelta" value="0" min="0" step="0.1">
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="input-group">
+                    <label class="input-label">Fullscreen Display</label>
+                    <div class="toggle-container">
+                        <button type="button" id="lapTimeBtn" class="toggle-btn toggle-active">Lap Time</button>
+                        <button type="button" id="diffBtn" class="toggle-btn">Diff from Target</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">Performance Analysis</h2>
+            <div class="analysis-grid">
+                <div class="analysis-item">
+                    <span class="analysis-label">Best:</span>
+                    <span class="analysis-value" id="bestLap">--</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Diff:</span>
+                    <span class="analysis-value" id="targetDiff">--</span>
+                </div>
+                <div class="analysis-item">
+                    <span class="analysis-label">Avg:</span>
+                    <span class="analysis-value" id="avgLap">--</span>
+                </div>
+            </div>
+            <div class="lap-chart-container">
+                <canvas id="lapChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">Lap History <button id="copyHistory" class="btn" style="font-size: 0.8rem; padding: 5px 10px; float: right;">Copy</button></h2>
+            <div class="history">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Lap</th>
+                            <th>Lap Time</th>
+                            <th>Total Time</th>
+                            <th>vs Prev</th>
+                            <th>vs Target</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- History entries will go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="fullscreen-lap" id="fullscreenLap">
+        <button class="btn btn-back" id="btnBack">Back</button>
+        <div class="lap-large" id="lapLarge">0</div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Timer variables
+            let startTime = 0;
+            let lapStartTime = 0;
+            let totalTime = 0;
+            let isRunning = false;
+            let timerInterval;
+            let lapNumber = 0;
+            let prevLapTime = 0;
+            let lastLapTime = 0;
+            
+            // Array to store lap times
+            let lapTimes = [];
+            
+            // Display mode - false = show lap time, true = show diff from target
+            let showDiff = false;
+            
+            // DOM elements
+            const totalTimeEl = document.getElementById('totalTime');
+            const currentLapEl = document.getElementById('currentLap');
+            const btnStartLap = document.getElementById('btnStartLap');
+            const btnStop = document.getElementById('btnStop');
+            const btnReset = document.getElementById('btnReset');
+            const historyBody = document.getElementById('historyBody');
+            const fullscreenLap = document.getElementById('fullscreenLap');
+            const lapLarge = document.getElementById('lapLarge');
+            const btnBack = document.getElementById('btnBack');
+            const targetTimeInput = document.getElementById('targetTime');
+            const targetDeltaInput = document.getElementById('targetDelta');
+            const copyHistoryBtn = document.getElementById('copyHistory');
+            
+            // Performance analysis elements
+            const bestLapEl = document.getElementById('bestLap');
+            const avgLapEl = document.getElementById('avgLap');
+            const targetDiffEl = document.getElementById('targetDiff');
+            const lapChartEl = document.getElementById('lapChart');
+            
+            // Toggle buttons for display mode
+            const lapTimeBtn = document.getElementById('lapTimeBtn');
+            const diffBtn = document.getElementById('diffBtn');
+            
+            // Initialize buttons
+            btnStop.disabled = true;
+            
+            // Format time function with two decimal places, but hide trailing zeros
+            function formatTime(timeInMs) {
+                const minutes = Math.floor(timeInMs / 60000);
+                const seconds = Math.floor((timeInMs % 60000) / 1000);
+                const tenths = Math.floor((timeInMs % 1000) / 100);
+                const hundredths = Math.floor((timeInMs % 100) / 10);
+                
+                // Only show one decimal if the second decimal is 0
+                if (hundredths === 0) {
+                    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${tenths}`;
+                } else {
+                    const decimal = (tenths * 10 + hundredths);
+                    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${decimal.toString().padStart(2, '0')}`;
+                }
+            }
+            
+            // Format time function with one decimal place for the main display
+            function formatTimeOneDecimal(timeInMs) {
+                const minutes = Math.floor(timeInMs / 60000);
+                const seconds = Math.floor((timeInMs % 60000) / 1000);
+                const tenths = Math.floor((timeInMs % 1000) / 100);
+                
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${tenths}`;
+            }
+            
+            // Format lap display time (only first digit and first decimal, rounded)
+            function formatLapDisplayTime(timeInMs) {
+                // Convert to seconds
+                const totalSeconds = timeInMs / 1000;
+                
+                // Extract only the ones digit (last digit of seconds part)
+                const onesDigit = Math.floor(totalSeconds) % 10;
+                
+                // Get the first decimal and round it
+                const firstDecimal = Math.round((totalSeconds * 10) % 10);
+                
+                // Ensure we only return exactly one digit for seconds and one for decimal
+                return `${onesDigit}.${firstDecimal}`;
+            }
+            
+            // Update timer display
+            function updateDisplay() {
+                const currentTime = Date.now();
+                const elapsedTotal = isRunning ? (currentTime - startTime + totalTime) : totalTime;
+                const elapsedLap = isRunning ? (currentTime - lapStartTime) : lastLapTime;
+                
+                totalTimeEl.textContent = formatTimeOneDecimal(elapsedTotal);
+                currentLapEl.textContent = formatTimeOneDecimal(elapsedLap);
+            }
+            
+            // Simple and effective scroll prevention
+            function disableScroll() {
+                document.body.classList.add('no-scroll');
+                
+                // Also prevent touchmove events
+                document.addEventListener('touchmove', preventTouchMove, { passive: false });
+            }
+            
+            function enableScroll() {
+                document.body.classList.remove('no-scroll');
+                
+                // Remove touchmove prevention
+                document.removeEventListener('touchmove', preventTouchMove);
+            }
+            
+            function preventTouchMove(e) {
+                // Allow scrolling on scrollable elements
+                let isScrollable = false;
+                let element = e.target;
+                
+                // Check if the element or any parent is scrollable
+                while (element && !isScrollable) {
+                    if (element.classList && element.classList.contains('history')) {
+                        isScrollable = true;
+                    }
+                    element = element.parentElement;
+                }
+                
+                // Only prevent default if not in a scrollable area
+                if (!isScrollable) {
+                    e.preventDefault();
+                }
+            }
+            
+            // Start/Lap button handler
+            function handleStartLap() {
+                const currentTime = Date.now();
+                
+                if (!isRunning) {
+                    // Start the timer
+                    isRunning = true;
+                    startTime = currentTime;
+                    lapStartTime = currentTime;
+                    btnStop.disabled = false;
+                    
+                    // Disable scrolling when timer starts
+                    disableScroll();
+                    
+                    // Start the interval to update the display
+                    timerInterval = setInterval(updateDisplay, 100);
+                } else {
+                    // Record lap
+                    const lapTime = currentTime - lapStartTime;
+                    addLapToHistory(lapTime);
+                    
+                    // Reset lap timer
+                    lapStartTime = currentTime;
+                    prevLapTime = lapTime;
+                    
+                    // Show fullscreen lap time
+                    showFullscreenLap(lapTime);
+                }
+            }
+            
+            // Stop button handler
+            function handleStop() {
+                if (isRunning) {
+                    // Stop the timer
+                    isRunning = false;
+                    clearInterval(timerInterval);
+                    
+                    // Re-enable scrolling when timer stops
+                    enableScroll();
+                    
+                    // Record the last lap time
+                    const currentTime = Date.now();
+                    lastLapTime = currentTime - lapStartTime;
+                    totalTime += (currentTime - startTime);
+                    
+                    // Record the lap in history
+                    addLapToHistory(lastLapTime);
+                    
+                    btnStop.disabled = true;
+                }
+            }
+            
+            // Reset button handler
+            function handleReset() {
+                // Reset all timer variables
+                isRunning = false;
+                clearInterval(timerInterval);
+                startTime = 0;
+                lapStartTime = 0;
+                totalTime = 0;
+                lapNumber = 0;
+                prevLapTime = 0;
+                lastLapTime = 0;
+                lapTimes = [];
+                
+                // Re-enable scrolling
+                enableScroll();
+                
+                // Reset display
+                totalTimeEl.textContent = '00:00.0';
+                currentLapEl.textContent = '00:00.0';
+                historyBody.innerHTML = '';
+                
+                // Reset analysis
+                bestLapEl.textContent = '--';
+                avgLapEl.textContent = '--';
+                targetDiffEl.textContent = '--';
+                
+                // Reset chart
+                if (window.lapChart && typeof window.lapChart.destroy === 'function') {
+                    window.lapChart.destroy();
+                }
+                window.lapChart = null;
+                
+                btnStop.disabled = true;
+            }
+            
+            // Back button handler
+            function handleBack() {
+                fullscreenLap.style.display = 'none';
+            }
+            
+            // Add both click and touch event listeners
+            btnStartLap.addEventListener('click', handleStartLap);
+            btnStop.addEventListener('click', handleStop);
+            btnReset.addEventListener('click', handleReset);
+            btnBack.addEventListener('click', handleBack);
+            
+            // Add touch event listeners for mobile
+            btnStartLap.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleStartLap();
+            });
+            
+            btnStop.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleStop();
+            });
+            
+            btnReset.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleReset();
+            });
+            
+            btnBack.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleBack();
+            });
+            
+            // Toggle display mode buttons
+            function handleLapTimeBtn() {
+                showDiff = false;
+                lapTimeBtn.classList.add('toggle-active');
+                diffBtn.classList.remove('toggle-active');
+            }
+            
+            function handleDiffBtn() {
+                showDiff = true;
+                diffBtn.classList.add('toggle-active');
+                lapTimeBtn.classList.remove('toggle-active');
+            }
+            
+            lapTimeBtn.addEventListener('click', handleLapTimeBtn);
+            diffBtn.addEventListener('click', handleDiffBtn);
+            
+            lapTimeBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleLapTimeBtn();
+            });
+            
+            diffBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                handleDiffBtn();
+            });
+            
+            // Add lap to history
+            function addLapToHistory(lapTime) {
+                lapNumber++;
+                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
+                
+                // Add to lap times array
+                lapTimes.push(lapTime);
+                
+                const row = document.createElement('tr');
+                
+                // Lap number
+                const lapCell = document.createElement('td');
+                lapCell.textContent = lapNumber;
+                row.appendChild(lapCell);
+                
+                // Lap time
+                const timeCell = document.createElement('td');
+                timeCell.textContent = formatTime(lapTime);
+                row.appendChild(timeCell);
+                
+                // Total time
+                const totalCell = document.createElement('td');
+                const calculatedTotal = isRunning ? 
+                    totalTime + (Date.now() - startTime) : 
+                    totalTime;
+                totalCell.textContent = formatTime(calculatedTotal);
+                row.appendChild(totalCell);
+                
+                // Vs previous lap
+                const vsPrevCell = document.createElement('td');
+                if (lapNumber > 1) {
+                    const diff = lapTime - prevLapTime;
+                    const sign = diff >= 0 ? '+' : '-';
+                    vsPrevCell.textContent = `${sign}${formatTime(Math.abs(diff))}`;
+                    vsPrevCell.style.color = diff >= 0 ? '#f44336' : '#4CAF50';
+                } else {
+                    vsPrevCell.textContent = '00:00.00';
+                }
+                row.appendChild(vsPrevCell);
+                
+                // Vs target
+                const vsTargetCell = document.createElement('td');
+                const diffTarget = lapTime - targetTime;
+                const signTarget = diffTarget >= 0 ? '+' : '-';
+                vsTargetCell.textContent = `${signTarget}${formatTime(Math.abs(diffTarget))}`;
+                vsTargetCell.style.color = diffTarget >= 0 ? '#f44336' : '#4CAF50';
+                row.appendChild(vsTargetCell);
+                
+                // Add row to history
+                historyBody.appendChild(row);
+                
+                // Save last lap time
+                lastLapTime = lapTime;
+                
+                // Update performance analysis
+                updatePerformanceAnalysis();
+            }
+            
+            // Show fullscreen lap display
+            function showFullscreenLap(lapTime) {
+                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
+                const delta = parseFloat(targetDeltaInput.value) * 1000; // Convert to ms
+                
+                // Determine background color based on time comparison
+                let bgColor;
+                if (lapTime < (targetTime - delta)) {
+                    // Below target (good)
+                    bgColor = '#4CAF50'; // Green
+                } else if (lapTime > (targetTime + delta)) {
+                    // Above target (bad)
+                    bgColor = '#f44336'; // Red
+                } else {
+                    // Within delta of target (neutral)
+                    bgColor = '#2196F3'; // Blue
+                }
+                
+                // Set the background color
+                fullscreenLap.style.backgroundColor = bgColor;
+                
+                if (showDiff) {
+                    // Show difference from target instead of lap time
+                    // Invert the logic: faster (below target) = positive, slower (above target) = negative
+                    const diffMs = targetTime - lapTime; // Target minus lap time
+                    const diffSeconds = diffMs / 1000;
+                    // Round to 1 decimal place and add + sign if positive
+                    const formattedDiff = diffSeconds >= 0 
+                        ? `+${diffSeconds.toFixed(1)}` 
+                        : diffSeconds.toFixed(1);
+                    lapLarge.textContent = formattedDiff;
+                } else {
+                    // Set the large lap time display (only first digit and first decimal)
+                    lapLarge.textContent = formatLapDisplayTime(lapTime);
+                }
+                
+                // Show the fullscreen display
+                fullscreenLap.style.display = 'flex';
+            }
+            
+            // Update performance analysis
+            function updatePerformanceAnalysis() {
+                if (lapTimes.length === 0) {
+                    return;
+                }
+                
+                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
+                
+                // Calculate best lap
+                const bestLap = Math.min(...lapTimes);
+                bestLapEl.textContent = formatTime(bestLap);
+                
+                // Calculate average lap
+                const totalLapTime = lapTimes.reduce((sum, time) => sum + time, 0);
+                const avgLap = totalLapTime / lapTimes.length;
+                avgLapEl.textContent = formatTime(avgLap);
+                
+                // Calculate average absolute difference from target
+                const totalAbsDiff = lapTimes.reduce((sum, time) => sum + Math.abs(time - targetTime), 0);
+                const avgAbsDiff = totalAbsDiff / lapTimes.length;
+                targetDiffEl.textContent = formatTime(avgAbsDiff);
+                
+                // Update lap chart
+                updateLapChart();
+            }
+            
+            // Update lap chart
+            function updateLapChart() {
+                if (!lapChartEl || lapTimes.length === 0) {
+                    return;
+                }
+                
+                const ctx = lapChartEl.getContext('2d');
+                const targetTime = parseFloat(targetTimeInput.value) * 1000; // Convert to ms
+                const targetDelta = parseFloat(targetDeltaInput.value) * 1000; // Convert to ms
+                
+                // Prepare data for chart
+                const labels = Array.from({length: lapTimes.length}, (_, i) => `Lap ${i+1}`);
+                const lapTimesInSeconds = lapTimes.map(t => t / 1000); // Convert ms to seconds
+                
+                // Get background colors based on performance
+                const backgroundColors = lapTimes.map(lapTime => {
+                    if (lapTime < (targetTime - targetDelta)) {
+                        return 'rgba(76, 175, 80, 0.7)'; // Green
+                    } else if (lapTime > (targetTime + targetDelta)) {
+                        return 'rgba(244, 67, 54, 0.7)'; // Red
+                    } else {
+                        return 'rgba(33, 150, 243, 0.7)'; // Blue
+                    }
+                });
+                
+                // Destroy previous chart if it exists
+                if (window.lapChart && typeof window.lapChart.destroy === 'function') {
+                    window.lapChart.destroy();
+                }
+                
+                try {
+                    // Create new chart
+                    window.lapChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Lap Time (seconds)',
+                                data: lapTimesInSeconds,
+                                backgroundColor: backgroundColors,
+                                borderColor: backgroundColors.map(c => c.replace('0.7', '1')),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255, 255, 255, 0.7)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(255, 255, 255, 0.7)'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Add target time line
+                    if (lapTimes.length > 0) {
+                        const targetSeconds = targetTime / 1000;
+                        const minY = Math.min(...lapTimesInSeconds) * 0.95;
+                        const maxY = Math.max(...lapTimesInSeconds) * 1.05;
+                        
+                        window.lapChart.options.scales.y.min = minY;
+                        window.lapChart.options.scales.y.max = maxY;
+                        
+                        window.lapChart.data.datasets.push({
+                            type: 'line',
+                            label: 'Target',
+                            data: Array(lapTimes.length).fill(targetSeconds),
+                            borderColor: 'rgba(255, 255, 255, 0.7)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        });
+                        
+                        window.lapChart.update();
+                    }
+                } catch (error) {
+                    console.error('Chart creation error:', error);
+                }
+            }
+            
+            // Copy history to clipboard
+            copyHistoryBtn.addEventListener('click', function() {
+                let historyText = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
+                
+                // Get all rows from the history table
+                const rows = historyBody.querySelectorAll('tr');
+                
+                // Convert each row to tab-separated text
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const rowText = Array.from(cells).map(cell => cell.textContent).join('\t');
+                    historyText += rowText + '\n';
+                });
+                
+                // Method 1: Use Clipboard API with fallback
+                const copyToClipboard = async (text) => {
+                    // Create a notification message
+                    const notification = document.createElement('div');
+                    notification.style.position = 'fixed';
+                    notification.style.bottom = '20px';
+                    notification.style.left = '50%';
+                    notification.style.transform = 'translateX(-50%)';
+                    notification.style.backgroundColor = '#333';
+                    notification.style.color = 'white';
+                    notification.style.padding = '10px 20px';
+                    notification.style.borderRadius = '5px';
+                    notification.style.zIndex = '1000';
+                    notification.textContent = 'Copied to clipboard!';
+                    notification.style.display = 'none';
+                    document.body.appendChild(notification);
+
+                    // Show notification
+                    const showNotification = (message, isSuccess) => {
+                        notification.textContent = message;
+                        notification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
+                        notification.style.display = 'block';
+                        setTimeout(() => {
+                            notification.style.display = 'none';
+                            document.body.removeChild(notification);
+                        }, 3000);
+                    };
+                    
+                    // Try all available methods
+                    try {
+                        // Method 1: Modern clipboard API
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(text);
+                            copyHistoryBtn.textContent = 'Copied!';
+                            setTimeout(() => { copyHistoryBtn.textContent = 'Copy'; }, 2000);
+                            showNotification('Copied to clipboard!', true);
+                            return true;
+                        }
+                        
+                        // Method 2: Copy command with textarea
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.focus();
+                        textarea.select();
+                        
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        
+                        if (successful) {
+                            copyHistoryBtn.textContent = 'Copied!';
+                            setTimeout(() => { copyHistoryBtn.textContent = 'Copy'; }, 2000);
+                            showNotification('Copied to clipboard!', true);
+                            return true;
+                        }
+                        
+                        // Method 3: Create a text field and select it for manual copy
+                        const container = document.createElement('div');
+                        container.style.position = 'fixed';
+                        container.style.top = '0';
+                        container.style.left = '0';
+                        container.style.width = '100%';
+                        container.style.height = '100%';
+                        container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                        container.style.zIndex = '9999';
+                        container.style.display = 'flex';
+                        container.style.flexDirection = 'column';
+                        container.style.alignItems = 'center';
+                        container.style.justifyContent = 'center';
+                        container.style.padding = '20px';
+                        
+                        const textArea = document.createElement('textarea');
+                        textArea.value = text;
+                        textArea.style.width = '90%';
+                        textArea.style.height = '60%';
+                        textArea.style.padding = '10px';
+                        textArea.style.marginBottom = '20px';
+                        textArea.style.borderRadius = '5px';
+                        
+                        const closeBtn = document.createElement('button');
+                        closeBtn.textContent = 'Close';
+                        closeBtn.style.padding = '10px 20px';
+                        closeBtn.style.borderRadius = '5px';
+                        closeBtn.style.backgroundColor = '#4CAF50';
+                        closeBtn.style.color = 'white';
+                        closeBtn.style.border = 'none';
+                        closeBtn.style.cursor = 'pointer';
+                        
+                        container.appendChild(textArea);
+                        container.appendChild(closeBtn);
+                        document.body.appendChild(container);
+                        
+                        textArea.focus();
+                        textArea.select();
+                        
+                        document.execCommand('copy');
+                        showNotification('Please select and copy the text manually', false);
+                        
+                        closeBtn.addEventListener('click', () => {
+                            document.body.removeChild(container);
+                        });
+                        
+                        return false;
+                    } catch (err) {
+                        console.error('Copy error:', err);
+                        showNotification('Copy failed. Please try selecting manually.', false);
+                        return false;
+                    }
+                };
+                
+                copyToClipboard(historyText);
+            });
+            
+            // Prevent scrolling when touching buttons on mobile
+            document.querySelectorAll('.btn, .toggle-btn').forEach(btn => {
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    // Trigger a click event to ensure the button action happens
+                    e.target.click();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
