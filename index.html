@@ -242,7 +242,7 @@
         }
         
         .history {
-            max-height: 200px;
+            max-height: 600px; /* Increased to fit approximately 16 rows */
             overflow-y: auto;
         }
         
@@ -338,6 +338,19 @@
             
             .analysis-value {
                 font-size: 1rem;
+            }
+        }
+        
+        /* Landscape mode on mobile - use full width */
+        @media (max-width: 900px) and (orientation: landscape) {
+            .container {
+                max-width: 100%;
+                padding: 10px;
+            }
+            
+            .section {
+                margin-bottom: 10px;
+                padding: 10px;
             }
         }
     </style>
@@ -1147,12 +1160,16 @@
                 }
             }
             
-            // Mobile-friendly in-place copy solution - completely rewritten
+            // Ultra-simple copy function for iOS Safari
             const copyHistoryBtn = document.getElementById('copyHistory');
             
             // Generate formatted text from lap history
             function generateHistoryText() {
                 const rows = historyBody.querySelectorAll('tr');
+                
+                if (rows.length === 0) {
+                    return null;
+                }
                 
                 // Create header
                 let text = 'Lap\tLap Time\tTotal Time\tvs Prev\tvs Target\n';
@@ -1169,152 +1186,117 @@
                 return text;
             }
             
-            // Track if the overlay is currently shown to prevent multiple overlays
-            let isOverlayShown = false;
-            
-            // Detect iOS for specialized handling
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            
-            // Simple copy approach - completely rewritten with no event delegation
-            safeAddEventListener(copyHistoryBtn, 'click', function() {
-                // Prevent multiple overlays
-                if (isOverlayShown) return;
-                
+            // Simple fullscreen copy overlay that will work on all browsers including iOS Safari
+            function showCopyOverlay() {
                 // Check if we have data
-                const rows = historyBody.querySelectorAll('tr');
-                if (rows.length === 0) {
+                const text = generateHistoryText();
+                if (!text) {
                     showToast("No lap data to copy", false);
                     return;
                 }
                 
-                // Generate text
-                const text = generateHistoryText();
-                
-                // Set overlay flag
-                isOverlayShown = true;
-                
-                // Get history section
-                const historySection = document.getElementById('historySection');
-                historySection.style.position = 'relative'; // Ensure positioning context
-                
-                // Create overlay container
+                // Create a fullscreen overlay
                 const overlay = document.createElement('div');
-                overlay.id = "copyOverlay";
-                overlay.style.position = 'absolute';
+                overlay.style.position = 'fixed';
                 overlay.style.top = '0';
                 overlay.style.left = '0';
-                overlay.style.right = '0';
-                overlay.style.bottom = '0';
-                overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
-                overlay.style.zIndex = '100';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
+                overlay.style.zIndex = '1000';
                 overlay.style.display = 'flex';
                 overlay.style.flexDirection = 'column';
                 overlay.style.justifyContent = 'center';
                 overlay.style.alignItems = 'center';
                 overlay.style.padding = '20px';
-                overlay.style.touchAction = 'none'; // Prevent scrolling
+                document.body.appendChild(overlay);
                 
-                // Create the internal container
+                // Create container for content
                 const container = document.createElement('div');
-                container.style.width = '100%';
+                container.style.width = '90%';
                 container.style.maxWidth = '500px';
-                container.style.padding = '0';
-                container.style.backgroundColor = 'transparent';
+                container.style.backgroundColor = '#333';
                 container.style.borderRadius = '8px';
+                container.style.padding = '15px';
+                container.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
                 overlay.appendChild(container);
                 
-                // Create header with title and done button
-                const header = document.createElement('div');
-                header.style.width = '100%';
-                header.style.display = 'flex';
-                header.style.justifyContent = 'space-between';
-                header.style.alignItems = 'center';
-                header.style.marginBottom = '15px';
-                container.appendChild(header);
+                // Add heading with instructions
+                const heading = document.createElement('h3');
+                heading.textContent = 'Copy Lap Data';
+                heading.style.color = 'white';
+                heading.style.margin = '0 0 15px 0';
+                heading.style.fontSize = '18px';
+                heading.style.textAlign = 'center';
+                container.appendChild(heading);
                 
-                // Add title
-                const title = document.createElement('div');
-                title.textContent = isIOS ? 
-                    'Tap and hold text, then select "Copy"' : 
-                    'Select all and copy:';
-                title.style.color = 'white';
-                title.style.fontSize = '14px';
-                title.style.flex = '1';
-                header.appendChild(title);
+                // Add instructions
+                const instructions = document.createElement('p');
+                instructions.innerHTML = '<b>👇 Tap and hold the text below</b><br>Then select "Copy" from the menu';
+                instructions.style.color = 'white';
+                instructions.style.margin = '0 0 15px 0';
+                instructions.style.fontSize = '16px';
+                instructions.style.textAlign = 'center';
+                instructions.style.backgroundColor = '#444';
+                instructions.style.padding = '10px';
+                instructions.style.borderRadius = '5px';
+                container.appendChild(instructions);
+                
+                // Create textarea with the content
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.width = '100%';
+                textarea.style.height = '150px';
+                textarea.style.padding = '10px';
+                textarea.style.backgroundColor = '#222';
+                textarea.style.color = 'white';
+                textarea.style.border = '1px solid #555';
+                textarea.style.borderRadius = '5px';
+                textarea.style.fontSize = '16px';
+                textarea.style.marginBottom = '15px';
+                container.appendChild(textarea);
                 
                 // Add done button
                 const doneBtn = document.createElement('button');
-                doneBtn.textContent = 'Done';
-                doneBtn.style.padding = '8px 15px';
+                doneBtn.textContent = 'Close';
+                doneBtn.style.width = '100%';
+                doneBtn.style.padding = '12px';
                 doneBtn.style.backgroundColor = '#4CAF50';
                 doneBtn.style.color = 'white';
                 doneBtn.style.border = 'none';
                 doneBtn.style.borderRadius = '5px';
                 doneBtn.style.fontSize = '16px';
-                doneBtn.style.marginLeft = '10px';
+                doneBtn.style.fontWeight = 'bold';
                 doneBtn.style.cursor = 'pointer';
-                header.appendChild(doneBtn);
+                container.appendChild(doneBtn);
                 
-                // Create text field
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.width = '100%';
-                textarea.style.height = '120px';
-                textarea.style.padding = '10px';
-                textarea.style.backgroundColor = '#333';
-                textarea.style.color = 'white';
-                textarea.style.border = '1px solid #555';
-                textarea.style.borderRadius = '5px';
-                textarea.style.fontSize = '16px'; // Important for iOS
-                container.appendChild(textarea);
-                
-                // Add overlay to page
-                historySection.appendChild(overlay);
-                
-                // Focus and select text
+                // Focus and select all text after a brief delay
                 setTimeout(() => {
                     textarea.focus();
                     textarea.select();
                 }, 100);
                 
-                // Define the close function
-                function closeOverlay() {
-                    if (historySection.contains(overlay)) {
-                        historySection.removeChild(overlay);
-                        isOverlayShown = false;
-                    }
-                }
-                
-                // Add done button listener - defined here to avoid multiple attachments
-                doneBtn.onclick = function(e) {
+                // Close when done button is clicked
+                doneBtn.addEventListener('click', function() {
+                    document.body.removeChild(overlay);
+                });
+                doneBtn.addEventListener('touchstart', function(e) {
                     e.preventDefault();
-                    closeOverlay();
-                };
-                
-                // Background click handler - use mousedown instead of click
-                overlay.addEventListener('mousedown', function(e) {
-                    if (e.target === overlay) {
-                        closeOverlay();
-                    }
+                    document.body.removeChild(overlay);
                 });
                 
-                // For touch devices
-                overlay.addEventListener('touchstart', function(e) {
+                // Also allow closing by tapping outside the container
+                overlay.addEventListener('click', function(e) {
                     if (e.target === overlay) {
-                        closeOverlay();
+                        document.body.removeChild(overlay);
                     }
                 });
-                
-                // Update button
-                copyHistoryBtn.textContent = 'Copy Ready';
-                setTimeout(() => {
-                    if (!isOverlayShown) {
-                        copyHistoryBtn.textContent = 'Copy';
-                    }
-                }, 2000);
-            });
+            }
             
-            // Handle touch events for copy button
+            // Handle copy button click
+            safeAddEventListener(copyHistoryBtn, 'click', showCopyOverlay);
+            
+            // Handle touch events for the copy button
             safeAddEventListener(copyHistoryBtn, 'touchstart', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1327,9 +1309,69 @@
                 setTimeout(() => {
                     copyHistoryBtn.style.backgroundColor = originalColor;
                     copyHistoryBtn.style.transform = 'scale(1)';
-                    copyHistoryBtn.click();
+                    showCopyOverlay();
                 }, 100);
             }, { passive: false });
+
+            // Improved input blur handling for mobile Safari
+            function setupInputBlurHandling() {
+                // Handle all inputs
+                const inputs = document.querySelectorAll('input');
+                
+                // Track the last focused input
+                let lastFocusedInput = null;
+                
+                // Add focus handlers
+                inputs.forEach(input => {
+                    input.addEventListener('focus', function() {
+                        lastFocusedInput = this;
+                        document.body.classList.add('input-focused');
+                    });
+                    
+                    // Add blur handler to help with tracking
+                    input.addEventListener('blur', function() {
+                        setTimeout(() => {
+                            if (document.activeElement !== input) {
+                                document.body.classList.remove('input-focused');
+                            }
+                        }, 100);
+                    });
+                });
+                
+                // Capture all touch events on the whole document
+                document.addEventListener('touchstart', function(e) {
+                    // If we have a focused input and user taps outside any input
+                    if (lastFocusedInput && 
+                        e.target.tagName.toLowerCase() !== 'input' && 
+                        !e.target.closest('input')) {
+                        
+                        // Force blur the input to hide keyboard
+                        lastFocusedInput.blur();
+                        // Reset tracking
+                        lastFocusedInput = null;
+                        // Remove the body class
+                        document.body.classList.remove('input-focused');
+                        
+                        // Prevent any default behavior just to be safe
+                        if (e.target.tagName.toLowerCase() !== 'button' && 
+                            !e.target.closest('button')) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+                
+                // Ensure tapping anywhere in the top section dismisses keyboard
+                document.getElementById('timerSection').addEventListener('touchstart', function(e) {
+                    if (lastFocusedInput) {
+                        lastFocusedInput.blur();
+                        lastFocusedInput = null;
+                        document.body.classList.remove('input-focused');
+                    }
+                }, { passive: false });
+            }
+            
+            // Initialize the input handling
+            setupInputBlurHandling();
         });
     </script>
 </body>
